@@ -1,0 +1,1631 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>BVG – Fundsachen Identifikation</title>
+  <script src="/sdk/app-page-sdk.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&family=DM+Mono:wght@500&display=swap" rel="stylesheet"/>
+
+  <style>
+    :root {
+      --yellow:       #FFCC00;
+      --yellow-dark:  #E6B800;
+      --yellow-dim:   #FFF5CC;
+      --black:        #111111;
+      --dark:         #1C1C1E;
+      --gray:         #6B6B6B;
+      --gray-light:   #F5F5F5;
+      --border:       #E2E2E2;
+      --green:        #1A8A4A;
+      --green-light:  #E6F5ED;
+      --red:          #C0392B;
+      --blue:         #1A6EB5;
+      --blue-light:   #E8F1FB;
+      --shadow:       0 4px 24px rgba(0,0,0,0.10);
+      --shadow-sm:    0 2px 10px rgba(0,0,0,0.07);
+      --radius:       16px;
+      --radius-sm:    10px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      min-height: 100%;
+      background: #ECECEC;
+      font-family: 'DM Sans', Helvetica, sans-serif;
+      color: var(--black);
+      -webkit-text-size-adjust: 100%;
+    }
+
+    /* ── TOPBAR ── */
+    #topbar {
+      position: sticky; top: 0; z-index: 200;
+      background: var(--yellow);
+      height: 52px;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.13);
+    }
+    #topbar img { height: 28px; }
+    #topbar .tb-title {
+      font-size: 12px; font-weight: 800; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--black);
+      display: flex; align-items: center; gap: 6px;
+    }
+
+    #demo-strip {
+      background: var(--black); color: var(--yellow);
+      text-align: center; font-size: 10px; font-weight: 700;
+      letter-spacing: 0.10em; padding: 3px 0;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    #demo-strip button {
+      background: var(--yellow); color: var(--black);
+      border: none; border-radius: 4px;
+      font-size: 9px; font-weight: 700; padding: 2px 8px;
+      cursor: pointer; font-family: inherit;
+    }
+    #demo-strip button:hover { background: #fff; }
+
+    /* ── WRAPPER ── */
+    .wrap {
+      max-width: 480px; margin: 0 auto;
+      padding: 20px 14px 40px;
+      display: flex; flex-direction: column; gap: 16px;
+    }
+
+    /* ── SKELETON ── */
+    @keyframes shimmer {
+      0%   { background-position: -600px 0; }
+      100% { background-position:  600px 0; }
+    }
+    .skel {
+      border-radius: var(--radius);
+      background: linear-gradient(90deg, #ddd 25%, #eee 50%, #ddd 75%);
+      background-size: 1200px 100%;
+      animation: shimmer 1.4s infinite;
+    }
+    .skel-tall  { height: 320px; }
+    .skel-short { height: 160px; }
+    #skel-view  { display: flex; flex-direction: column; gap: 14px; }
+
+    /* ── CARD ── */
+    .card {
+      background: #fff;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .card-head {
+      background: var(--dark); color: #fff;
+      padding: 12px 18px;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.10em;
+      text-transform: uppercase;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .card-head .ch-icon { font-size: 15px; }
+    .card-body { padding: 18px; }
+
+    /* ── VIEWS (screen flow) ── */
+    .view { display: none; flex-direction: column; gap: 16px; }
+    .view.active { display: flex; }
+
+    /* ── REF BADGE ROW ── */
+    .ref-row {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .ref-badge {
+      background: var(--yellow); color: var(--black);
+      font-family: 'DM Mono', monospace;
+      font-size: 13px; font-weight: 500;
+      padding: 5px 14px; border-radius: 20px;
+      box-shadow: 0 2px 8px rgba(255,204,0,0.35);
+    }
+    .status-pill {
+      font-size: 11px; font-weight: 700; padding: 4px 10px;
+      border-radius: 20px; letter-spacing: 0.03em;
+    }
+    .status-pill.active { background: rgba(192,57,43,0.09); color: var(--red); }
+    .status-pill.found  { background: var(--green-light); color: var(--green); }
+
+    /* ── ITEM PHOTO ── */
+    .item-photo-wrap {
+      border-radius: 12px; overflow: hidden;
+      border: 2px solid var(--yellow);
+      width: 100%; max-height: 220px;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--gray-light); margin-bottom: 16px;
+      position: relative;
+    }
+    .item-photo-wrap img {
+      width: 100%; max-height: 220px; object-fit: cover; display: block;
+    }
+    .item-photo-wrap .no-photo {
+      font-size: 48px; padding: 32px;
+    }
+    .photo-badge {
+      position: absolute; bottom: 8px; right: 8px;
+      background: rgba(0,0,0,0.55); color: #fff;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
+      padding: 3px 8px; border-radius: 20px;
+    }
+
+    /* ── ITEM HERO BLOCK ── */
+    .item-hero {
+      background: var(--yellow-dim);
+      border: 2px solid var(--yellow);
+      border-radius: 12px; padding: 14px 16px;
+      display: flex; align-items: center; gap: 14px;
+      margin-bottom: 16px;
+    }
+    .item-hero-icon {
+      width: 56px; height: 56px; background: var(--yellow);
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 28px; flex-shrink: 0;
+      box-shadow: 0 3px 10px rgba(255,204,0,0.40);
+    }
+    .item-hero-info h2 { font-size: 20px; font-weight: 800; line-height: 1.15; text-transform: capitalize; }
+    .item-hero-info p  { font-size: 12px; color: var(--gray); margin-top: 3px; font-style: italic; }
+
+    /* ── DETAIL GRID ── */
+    .d-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .d-cell {
+      background: var(--gray-light); border-radius: var(--radius-sm);
+      padding: 11px 13px;
+    }
+    .d-cell.full { grid-column: 1/-1; }
+    .d-label {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.09em;
+      text-transform: uppercase; color: var(--gray);
+      margin-bottom: 4px;
+    }
+    .d-val { font-size: 14px; font-weight: 700; color: var(--black); line-height: 1.3; }
+
+    /* ── USER INFO CARD ── */
+    .user-row {
+      display: flex; align-items: center; gap: 14px;
+      padding: 14px 16px;
+      background: var(--blue-light);
+      border-radius: 12px;
+      border: 1.5px solid #BAD4EE;
+      margin-bottom: 0;
+    }
+    .user-avatar {
+      width: 48px; height: 48px;
+      background: var(--blue); color: #fff;
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 20px; font-weight: 800; flex-shrink: 0;
+    }
+    .user-info .u-name { font-size: 16px; font-weight: 800; }
+    .user-info .u-phone { font-size: 12px; color: var(--gray); margin-top: 2px; font-family: 'DM Mono', monospace; }
+
+    /* ── DIVIDER ── */
+    .divider { height: 1px; background: var(--border); margin: 14px 0; }
+
+    /* ── CONFIRM CHECKBOX ── */
+    .confirm-block {
+      border: 2px solid var(--border);
+      border-radius: 12px; padding: 16px;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .confirm-block.checked {
+      border-color: var(--green);
+      background: var(--green-light);
+    }
+    .confirm-label {
+      display: flex; align-items: flex-start; gap: 12px;
+      cursor: pointer; user-select: none;
+    }
+    .confirm-label input[type="checkbox"] { display: none; }
+    .custom-check {
+      width: 24px; height: 24px; flex-shrink: 0;
+      border: 2px solid var(--border);
+      border-radius: 6px; display: flex; align-items: center; justify-content: center;
+      background: #fff; transition: all 0.18s;
+      margin-top: 1px;
+    }
+    .confirm-label input:checked ~ .confirm-text-wrap .custom-check,
+    .confirm-block.checked .custom-check {
+      background: var(--green); border-color: var(--green);
+    }
+    .custom-check svg { display: none; }
+    .confirm-block.checked .custom-check svg { display: block; }
+    .confirm-text { font-size: 14px; font-weight: 500; line-height: 1.5; color: var(--dark); }
+
+    /* ── PRIMARY BUTTON ── */
+    .btn-primary {
+      background: var(--black); color: var(--yellow);
+      border: none; border-radius: 12px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px; font-weight: 800; letter-spacing: 0.04em;
+      width: 100%; height: 54px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: background 0.2s, transform 0.12s, opacity 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-primary:hover:not(:disabled) { background: #2a2a2a; }
+    .btn-primary:active:not(:disabled) { transform: scale(0.98); }
+    .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .btn-yellow {
+      background: var(--yellow); color: var(--black);
+      border: none; border-radius: 12px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px; font-weight: 800; letter-spacing: 0.04em;
+      width: 100%; height: 54px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: background 0.2s, transform 0.12s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-yellow:hover { background: var(--yellow-dark); }
+    .btn-yellow:active { transform: scale(0.98); }
+
+    .btn-green {
+      background: var(--green); color: #fff;
+      border: none; border-radius: 12px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px; font-weight: 800; letter-spacing: 0.04em;
+      width: 100%; height: 54px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: background 0.2s, transform 0.12s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-green:hover { background: #15703d; }
+    .btn-green:active { transform: scale(0.98); }
+
+    /* ── SUCCESS BANNER ── */
+    @keyframes pop {
+      0%   { transform: scale(0.2); opacity: 0; }
+      70%  { transform: scale(1.12); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .success-banner {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 10px; text-align: center; padding: 24px 16px 8px;
+    }
+    .success-circle {
+      width: 72px; height: 72px; border-radius: 50%;
+      background: var(--green);
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 18px rgba(26,138,74,0.35);
+      animation: pop 0.45s ease-out both;
+    }
+    .success-circle svg { width: 34px; height: 34px; }
+    .success-banner h3 { font-size: 20px; font-weight: 800; }
+    .success-banner p  { font-size: 13px; color: var(--gray); line-height: 1.6; }
+
+    /* ── ADDRESS INFO ── */
+    .address-block {
+      background: var(--yellow-dim);
+      border: 2px solid var(--yellow);
+      border-radius: 12px; padding: 16px;
+    }
+    .address-block h4 {
+      font-size: 13px; font-weight: 800; letter-spacing: 0.05em;
+      text-transform: uppercase; margin-bottom: 10px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .address-block p { font-size: 14px; font-weight: 700; line-height: 1.6; }
+    .hours-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 4px 12px; margin-top: 10px;
+    }
+    .hours-row { display: contents; }
+    .hours-day  { font-size: 12px; font-weight: 700; color: var(--gray); }
+    .hours-time { font-size: 12px; font-weight: 700; color: var(--black); }
+    .hours-time.closed { color: var(--red); }
+
+    .id-note {
+      background: rgba(26,110,181,0.08);
+      border-left: 3px solid var(--blue);
+      border-radius: 0 8px 8px 0;
+      padding: 9px 12px;
+      font-size: 12px; font-weight: 600; color: var(--dark); line-height: 1.5;
+    }
+
+    /* ── UPLOAD DROP ZONE ── */
+    #id-drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: 12px; padding: 28px 16px;
+      text-align: center; cursor: pointer; position: relative;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    #id-drop-zone:hover, #id-drop-zone.drag-over {
+      border-color: var(--yellow); background: var(--yellow-dim);
+    }
+    #id-drop-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; z-index: 2; }
+    .dz-icon { font-size: 38px; margin-bottom: 8px; }
+    .dz-title { font-size: 14px; font-weight: 700; }
+    .dz-sub   { font-size: 12px; color: var(--gray); margin-top: 3px; }
+
+    #id-preview-wrap { display: none; flex-direction: column; gap: 10px; }
+    #id-preview-container {
+      border-radius: 10px; overflow: hidden;
+      border: 2px solid var(--yellow);
+      max-height: 200px; display: flex; align-items: center; position: relative;
+    }
+    #id-preview-img { width: 100%; max-height: 200px; object-fit: cover; display: block; }
+    .remove-btn {
+      position: absolute; top: 8px; right: 8px;
+      background: rgba(0,0,0,0.6); color: #fff; border: none;
+      border-radius: 50%; width: 28px; height: 28px; cursor: pointer;
+      font-size: 14px; display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s;
+    }
+    .remove-btn:hover { background: rgba(192,57,43,0.85); }
+
+    /* ── PROGRESS BAR ── */
+    #id-progress-wrap { display: none; height: 5px; background: #eee; border-radius: 3px; overflow: hidden; margin-top: 8px; }
+    #id-progress-wrap.vis { display: block; }
+    @keyframes prog { from { width: 0%; } to { width: 100%; } }
+    #id-progress-bar { height: 100%; background: var(--yellow); border-radius: 3px; animation: prog 2.5s ease-out forwards; }
+
+    /* ── DELIVERY FORM ── */
+    .form-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+    .form-label { font-size: 11px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--gray); }
+    .form-input, .form-select {
+      border: 2px solid var(--border); border-radius: 10px;
+      padding: 11px 14px; font-family: 'DM Sans', sans-serif;
+      font-size: 14px; font-weight: 500; color: var(--black);
+      background: #fff; transition: border-color 0.18s;
+      appearance: none; -webkit-appearance: none; width: 100%;
+    }
+    .form-input:focus, .form-select:focus {
+      outline: none; border-color: var(--yellow);
+    }
+    .form-input.loaded { background: #f9f9f9; border-color: #ccc; }
+    .select-wrap { position: relative; }
+    .select-wrap::after {
+      content: '▾'; position: absolute; right: 14px; top: 50%;
+      transform: translateY(-50%); pointer-events: none;
+      color: var(--gray); font-size: 14px;
+    }
+    .radio-group { display: flex; flex-direction: column; gap: 8px; }
+    .radio-option {
+      display: flex; align-items: center; justify-content: space-between;
+      border: 2px solid var(--border); border-radius: 10px;
+      padding: 11px 14px; cursor: pointer;
+      transition: border-color 0.18s, background 0.18s;
+    }
+    .radio-option-left { display: flex; align-items: center; gap: 10px; }
+    .radio-option input[type="radio"] { accent-color: var(--black); width: 16px; height: 16px; flex-shrink: 0; }
+    .radio-option span { font-size: 14px; font-weight: 600; }
+    .radio-option.selected { border-color: var(--black); background: #f8f8f8; }
+    .price-badge {
+      background: var(--yellow);
+      color: var(--black);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 12px;
+    }
+
+    /* ── PRICE DISPLAY ── */
+    .price-display {
+      background: var(--gray-light);
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-top: 12px;
+    }
+    .price-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 8px 0; font-size: 14px;
+    }
+    .price-row.total {
+      border-top: 2px solid var(--black);
+      margin-top: 8px;
+      padding-top: 12px;
+      font-weight: 800;
+    }
+    .price-row.total .amount {
+      font-size: 20px;
+      color: var(--black);
+    }
+
+    /* ── TRACKING CARD ── */
+    .tracking-chip {
+      background: var(--black); color: var(--yellow);
+      border-radius: 10px; padding: 14px 16px;
+      text-align: center;
+    }
+    .tracking-chip .tc-label { font-size: 10px; font-weight: 700; letter-spacing: 0.10em; text-transform: uppercase; opacity: 0.7; }
+    .tracking-chip .tc-number { font-family: 'DM Mono', monospace; font-size: 22px; font-weight: 500; margin-top: 4px; letter-spacing: 0.05em; }
+
+    /* ── INFO NOTE ── */
+    .info-note {
+      background: rgba(255,204,0,0.12); border-left: 3px solid var(--yellow);
+      border-radius: 0 8px 8px 0; padding: 9px 12px;
+      font-size: 12px; font-weight: 600; color: var(--gray); line-height: 1.5;
+    }
+
+    /* ── POLLING INDICATOR ── */
+    .polling-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px;
+      background: var(--gray-light); border-radius: 10px;
+      font-size: 13px; font-weight: 600; color: var(--gray);
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    .poll-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--yellow); flex-shrink: 0;
+      animation: pulse 1.4s ease-in-out infinite;
+    }
+
+    /* ── FOOTER ── */
+    .footer { font-size: 11px; color: #bbb; text-align: center; line-height: 1.6; }
+
+    /* ── SPIN ── */
+    @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+    .spin { animation: spin 0.8s linear infinite; }
+
+    /* ── FINGERPRINT ── */
+    .fp-wrapper { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 10px 0 4px; }
+    .fp-label { font-size: 14px; color: var(--gray); text-align: center; line-height: 1.5; }
+    .fp-btn-wrap { position: relative; display: inline-flex; align-items: center; justify-content: center; }
+
+    @keyframes scan-ring { 0% { transform: scale(1); opacity: 0.75; } 100% { transform: scale(1.7); opacity: 0; } }
+    .fp-ring {
+      position: absolute; inset: 0; border-radius: 50%; border: 3px solid var(--yellow);
+      pointer-events: none; opacity: 0;
+    }
+    .scanning .fp-ring { animation: scan-ring 0.9s ease-out infinite; }
+
+    .fp-btn {
+      width: 100px; height: 100px; background: var(--yellow); border: none;
+      border-radius: 50%; cursor: pointer; display: flex; align-items: center;
+      justify-content: center; box-shadow: 0 4px 20px rgba(255,204,0,0.5);
+      transition: transform 0.15s, box-shadow 0.15s, background 0.3s;
+      -webkit-tap-highlight-color: transparent; position: relative; overflow: hidden;
+    }
+    .fp-btn:hover { transform: scale(1.04); box-shadow: 0 6px 28px rgba(255,204,0,0.65); }
+    .fp-btn:active { transform: scale(0.96); }
+    .fp-btn svg { width: 48px; height: 48px; position: relative; z-index: 1; transition: opacity 0.2s; }
+    .fp-btn::after {
+      content: ''; position: absolute; inset: 0; border-radius: 50%;
+      background: rgba(255,255,255,0.45); opacity: 0; transform: scale(0);
+    }
+    .fp-btn.ripple::after { opacity: 1; transform: scale(1); transition: transform 0.4s ease-out, opacity 0.4s ease-out; }
+
+    .fp-progress-wrap { width: 100%; height: 5px; background: #eee; border-radius: 3px; overflow: hidden; display: none; }
+    .fp-progress-wrap.visible { display: block; }
+    @keyframes fp-progress-fill { from { width: 0%; } to { width: 100%; } }
+    .fp-progress-inner { height: 100%; background: var(--yellow); border-radius: 3px; animation: fp-progress-fill 1.8s ease-out forwards; }
+
+    .status-msg { font-size: 13px; font-weight: 600; text-align: center; min-height: 20px; transition: color 0.2s; }
+    .status-msg.scanning { color: var(--gray); }
+    .status-msg.success { color: var(--green); }
+    .status-msg.error { color: var(--red); }
+    .fp-hint { font-size: 11px; color: #bbb; text-align: center; }
+
+    /* ── CARD INPUT STYLING ── */
+    .card-input-row {
+      display: flex; gap: 10px;
+    }
+    .card-input-row .form-group { flex: 1; }
+
+    .card-visa {
+      font-family: 'DM Mono', monospace;
+      letter-spacing: 0.05em;
+    }
+
+    @media (max-width: 360px) {
+      .d-grid { grid-template-columns: 1fr; }
+      .d-cell.full { grid-column: 1; }
+      .card-input-row { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOPBAR -->
+  <div id="topbar">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/b/bf/BVG_Logo_07.2021.svg" alt="BVG"/>
+    <div class="tb-title">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+      </svg>
+      Fundsachen
+    </div>
+  </div>
+  <div id="demo-strip">
+    ⚠ DEMO — KEINE ECHTEN FUNDDATEN
+    <button onclick="resetDemo()">Reset Demo</button>
+  </div>
+
+  <div class="wrap">
+
+    <!-- SKELETON -->
+    <div id="skel-view">
+      <div class="skel skel-tall"></div>
+      <div class="skel skel-short"></div>
+    </div>
+
+    <!-- ══════════════════════════════
+         VIEW A: ITEM IDENTIFICATION
+    ══════════════════════════════ -->
+    <div class="view" id="view-identify">
+
+      <!-- User greeting card -->
+      <div class="card">
+        <div class="card-head"><span class="ch-icon">👤</span> Ihre Anfrage</div>
+        <div class="card-body">
+          <div class="user-row">
+            <div class="user-avatar" id="user-initials">MM</div>
+            <div class="user-info">
+              <div class="u-name" id="user-name">Max Mustermann</div>
+              <div class="u-phone" id="user-phone">–</div>
+            </div>
+          </div>
+          <div class="divider"></div>
+          <p style="font-size:13px;color:var(--gray);line-height:1.6;">
+            Wir haben einen Gegenstand gefunden, der möglicherweise Ihnen gehört. Bitte prüfen Sie die nachfolgenden Informationen und bestätigen Sie, ob es sich um Ihr Eigentum handelt.
+          </p>
+        </div>
+      </div>
+
+      <!-- Item detail card -->
+      <div class="card">
+        <div class="card-head"><span class="ch-icon">🏷️</span> Gefundener Gegenstand</div>
+        <div class="card-body">
+          <div class="ref-row">
+            <div class="ref-badge">BVG-3847</div>
+            <div class="status-pill active" id="status-badge-a">Wird gesucht</div>
+          </div>
+
+          <!-- Item photo from URL -->
+          <div class="item-photo-wrap" id="photo-wrap">
+            <div class="no-photo" id="photo-placeholder">📦</div>
+            <img id="item-photo" src="" alt="Foto des Gegenstands" style="display:none;" onerror="photoError()"/>
+            <div class="photo-badge">Fundfoto</div>
+          </div>
+
+          <!-- Hero -->
+          <div class="item-hero">
+            <div class="item-hero-icon" id="item-icon-a">📦</div>
+            <div class="item-hero-info">
+              <h2 id="item-name-a">–</h2>
+              <p id="item-special-a">–</p>
+            </div>
+          </div>
+
+          <!-- Details -->
+          <div class="d-grid">
+            <div class="d-cell">
+              <div class="d-label">📅 Verlustdatum</div>
+              <div class="d-val" id="d-date">–</div>
+            </div>
+            <div class="d-cell">
+              <div class="d-label">🕐 Uhrzeit</div>
+              <div class="d-val" id="d-time">–</div>
+            </div>
+            <div class="d-cell">
+              <div class="d-label">🚌 Linie / Ort</div>
+              <div class="d-val" id="d-line">–</div>
+            </div>
+            <div class="d-cell">
+              <div class="d-label">🏷️ Kategorie</div>
+              <div class="d-val" id="d-type">–</div>
+            </div>
+            <div class="d-cell full">
+              <div class="d-label">📝 Beschreibung</div>
+              <div class="d-val" id="d-desc">–</div>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- Confirmation checkbox -->
+          <div class="confirm-block" id="confirm-block">
+            <label class="confirm-label" id="confirm-label" onclick="toggleConfirm()">
+              <div class="custom-check" id="custom-check">
+                <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              </div>
+              <span class="confirm-text">
+                Ja, ich bestätige, dass dieser Gegenstand mir gehört und erkenne ihn als mein Eigentum an.
+              </span>
+            </label>
+          </div>
+
+          <button class="btn-primary" id="confirm-btn" onclick="confirmOwnership()" disabled style="margin-top:14px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            Eigentumsrecht bestätigen
+          </button>
+        </div>
+      </div>
+
+    </div><!-- /view-identify -->
+
+    <!-- ══════════════════════════════
+         VIEW B: CONGRATS — PICK UP INFO
+    ══════════════════════════════ -->
+    <div class="view" id="view-pickup">
+
+      <div class="card">
+        <div class="card-body">
+          <div class="success-banner">
+            <div class="success-circle">
+              <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            </div>
+            <h3>Herzlichen Glückwunsch!</h3>
+            <p>Ihre Eigentumsbestätigung wurde erfolgreich registriert.<br>Bitte holen Sie Ihren Gegenstand persönlich ab.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="ch-icon">📍</span> Abholung – Fundbüro</div>
+        <div class="card-body">
+          <div class="address-block">
+            <h4>🏢 Adresse</h4>
+            <p>
+              Fundbüro BVG<br>
+              Rudolfstr. 1–8<br>
+              10245 Berlin-Friedrichshain
+            </p>
+            <div class="hours-grid" style="margin-top:14px;">
+              <div class="d-label" style="grid-column:1/-1;margin-bottom:4px;">📅 Öffnungszeiten</div>
+              <span class="hours-day">Montag</span>     <span class="hours-time">9:00 – 17:00 Uhr</span>
+              <span class="hours-day">Dienstag</span>   <span class="hours-time">9:00 – 17:00 Uhr</span>
+              <span class="hours-day">Mittwoch</span>   <span class="hours-time closed">Geschlossen</span>
+              <span class="hours-day">Donnerstag</span> <span class="hours-time">9:00 – 17:00 Uhr</span>
+              <span class="hours-day">Freitag</span>    <span class="hours-time">9:00 – 17:00 Uhr</span>
+              <span class="hours-day">Samstag</span>    <span class="hours-time closed">Geschlossen</span>
+              <span class="hours-day">Sonntag</span>    <span class="hours-time closed">Geschlossen</span>
+              <span class="hours-day">Feiertage</span>  <span class="hours-time closed">Geschlossen</span>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="id-note">
+            🪪 <strong>Wichtig:</strong> Bitte bringen Sie bei der Abholung einen gültigen Lichtbildausweis (Personalausweis oder Reisepass) mit.
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- Polling: waiting for update2 = true -->
+          <div class="polling-row" id="poll-row">
+            <div class="poll-dot"></div>
+            <span>Warten auf Versandoption… (wird automatisch aktualisiert)</span>
+          </div>
+
+          <div class="info-note" style="margin-top:10px;">
+            💡 Alternativ können Sie Ihren Gegenstand auch per Post erhalten. Sobald unsere Mitarbeiter dies freischalten, erscheint hier eine Versandoption.
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /view-pickup -->
+
+    <!-- ══════════════════════════════
+         VIEW C: IDENTITY VERIFICATION + DELIVERY
+    ══════════════════════════════ -->
+    <div class="view" id="view-delivery">
+
+      <!-- ID Upload -->
+      <div class="card" id="card-id-upload">
+        <div class="card-head"><span class="ch-icon">🪪</span> Identitätsverifizierung</div>
+        <div class="card-body">
+
+          <div class="info-note" style="margin-bottom:14px;">
+            Um Ihren Gegenstand per Post zu erhalten, müssen Sie zunächst Ihre Identität durch ein Foto Ihres Ausweises verifizieren.
+          </div>
+
+          <div id="id-drop-zone">
+            <input type="file" id="id-file-input" accept="image/*" onchange="onIdFileSelected(event)"/>
+            <div class="dz-icon">🪪</div>
+            <div class="dz-title">Ausweis-Foto hochladen</div>
+            <div class="dz-sub">Vorder- oder Rückseite · JPG, PNG · max. 32 MB</div>
+          </div>
+
+          <div id="id-preview-wrap">
+            <div id="id-preview-container">
+              <img id="id-preview-img" src="" alt="Ausweisvorschau"/>
+              <button class="remove-btn" onclick="removeIdFile()">✕</button>
+            </div>
+          </div>
+
+          <div id="id-progress-wrap"><div id="id-progress-bar"></div></div>
+
+          <button class="btn-primary" id="id-upload-btn" onclick="uploadIdPhoto()" disabled style="margin-top:14px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="16 16 12 12 8 16"/>
+              <line x1="12" y1="12" x2="12" y2="21"/>
+              <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+            </svg>
+            Ausweis hochladen &amp; verifizieren
+          </button>
+
+          <!-- Success: ID verified -->
+          <div id="id-verified-block" style="display:none;">
+            <div class="success-banner" style="padding-top:8px;">
+              <div class="success-circle">
+                <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              </div>
+              <h3>Identität verifiziert!</h3>
+              <p>Herzlichen Glückwunsch! Ihre Identität wurde erfolgreich bestätigt. Sie können Ihren Gegenstand jetzt bequem per Post erhalten.</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Delivery address form -->
+      <div class="card" id="card-delivery-form" style="display:none;">
+        <div class="card-head"><span class="ch-icon">📦</span> Lieferadresse &amp; Versand</div>
+        <div class="card-body">
+
+          <div class="form-group">
+            <div class="form-label">Straße &amp; Hausnummer</div>
+            <input class="form-input" id="del-street" type="text" placeholder="z.B. Hauptstraße 12"/>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 2fr;gap:10px;">
+            <div class="form-group" style="margin-bottom:0;">
+              <div class="form-label">PLZ</div>
+              <input class="form-input" id="del-plz" type="text" placeholder="10115" maxlength="5"/>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <div class="form-label">Stadt</div>
+              <input class="form-input" id="del-city" type="text" placeholder="Berlin"/>
+            </div>
+          </div>
+          <div style="margin-top:12px;" class="form-group">
+            <div class="form-label">Versanddienstleister</div>
+            <div class="select-wrap">
+              <select class="form-select" id="del-carrier">
+                <option value="">— Bitte auswählen —</option>
+                <option value="DHL">DHL</option>
+                <option value="Hermes">Hermes</option>
+                <option value="DPD">DPD</option>
+                <option value="GLS">GLS</option>
+                <option value="UPS">UPS</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <div class="form-label">Lieferart &amp; Preis</div>
+            <div class="radio-group">
+              <label class="radio-option" id="opt-home" onclick="selectDelivery('home')">
+                <div class="radio-option-left">
+                  <input type="radio" name="delivery" value="home"/>
+                  <span>🏠 Zustellung nach Hause</span>
+                </div>
+                <span class="price-badge">8,00 €</span>
+              </label>
+              <label class="radio-option" id="opt-shop" onclick="selectDelivery('shop')">
+                <div class="radio-option-left">
+                  <input type="radio" name="delivery" value="shop"/>
+                  <span>🏪 Abholung im Paketshop</span>
+                </div>
+                <span class="price-badge">6,00 €</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="price-display" id="price-display" style="display:none;">
+            <div class="price-row">
+              <span>Versandkosten</span>
+              <span id="shipping-cost">–</span>
+            </div>
+            <div class="price-row total">
+              <span>Gesamtbetrag</span>
+              <span class="amount" id="total-amount">–</span>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <button class="btn-primary" id="send-btn" onclick="submitDelivery()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13"/>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+            <span id="send-btn-text">Zur Zahlung</span>
+          </button>
+
+        </div>
+      </div>
+
+    </div><!-- /view-delivery -->
+
+    <!-- ══════════════════════════════
+         VIEW D: PAYMENT
+    ══════════════════════════════ -->
+    <div class="view" id="view-payment">
+
+      <div class="card">
+        <div class="card-head">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFCC00" stroke-width="2.5">
+            <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+            <line x1="1" y1="10" x2="23" y2="10"/>
+          </svg>
+          Zahlung – Versandkosten
+        </div>
+        <div class="card-body">
+          <div class="item-hero" style="background: var(--blue-light); border-color: var(--blue);">
+            <div class="item-hero-icon" style="background: var(--blue);" id="payment-item-icon">📦</div>
+            <div class="item-hero-info">
+              <h2 id="payment-item-name" style="font-size:16px;">Gegenstand-Versand</h2>
+              <p id="payment-delivery-type">–</p>
+            </div>
+          </div>
+
+          <div class="price-display" style="margin-top:0;">
+            <div class="price-row">
+              <span>Versanddienstleister</span>
+              <span id="payment-carrier">–</span>
+            </div>
+            <div class="price-row">
+              <span>Lieferart</span>
+              <span id="payment-delivery-method">–</span>
+            </div>
+            <div class="price-row total">
+              <span>Gesamtbetrag</span>
+              <span class="amount" id="payment-total">–</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFCC00" stroke-width="2.5">
+            <path d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04.054-.09A13.916 13.916 0 0 0 8 11a4 4 0 1 1 8 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0 0 15.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 0 0 8 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"/>
+          </svg>
+          Biometrische Zahlung
+        </div>
+        <div class="card-body">
+          <div class="fp-wrapper">
+            <p class="fp-label">Tippen Sie auf den Sensor, um die Zahlung zu autorisieren.</p>
+            <div class="fp-btn-wrap" id="fp-btn-wrap">
+              <div class="fp-ring"></div>
+              <button class="fp-btn" id="fp-btn" onclick="startFingerprint()" aria-label="Fingerabdruck scannen">
+                <svg id="fp-icon" viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.4">
+                   <path d="M12 11c0 3.517-1.009 6.799-2.753 9.571"/>
+                   <path d="M4.807 8.96A8 8 0 0 1 19.8 10.4"/>
+                   <path d="M8 11a4 4 0 0 1 7.9-.8"/>
+                   <path d="M15.797 14a13.026 13.026 0 0 1-2.626 3.844"/>
+                   <path d="M3 14.5A16.77 16.77 0 0 0 4.2 20"/>
+                   <path d="M19.8 13A13.75 13.75 0 0 1 19 17"/>
+                   <path d="M6.5 19.5A15.998 15.998 0 0 0 8 21"/>
+                </svg>
+              </button>
+            </div>
+            <div class="fp-progress-wrap" id="fp-progress"><div class="fp-progress-inner"></div></div>
+            <p class="status-msg" id="fp-status"></p>
+            <p class="fp-hint">Demo: Sichere Zahlung simuliert</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Customer Info Card (shown after fingerprint) -->
+      <div class="card" id="card-customer-payment" style="display:none;">
+        <div class="card-head">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFCC00" stroke-width="2.5">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+          Kundeninformationen
+        </div>
+        <div class="card-body">
+          <div class="form-group">
+            <div class="form-label">Vorname</div>
+            <input class="form-input" id="pay-fname" type="text" placeholder="Vornamen eingeben"/>
+          </div>
+          <div class="form-group">
+            <div class="form-label">Nachname</div>
+            <input class="form-input" id="pay-lname" type="text" placeholder="Nachnamen eingeben"/>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <div class="form-label">E-Mail-Adresse</div>
+            <input class="form-input" id="pay-email" type="email" placeholder="E-Mail-Adresse eingeben"/>
+          </div>
+        </div>
+      </div>
+
+      <!-- Credit Card Info Card (shown after fingerprint) -->
+      <div class="card" id="card-credit-payment" style="display:none;">
+        <div class="card-head">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFCC00" stroke-width="2.5">
+            <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+            <line x1="1" y1="10" x2="23" y2="10"/>
+          </svg>
+          Zahlungsinformationen
+        </div>
+        <div class="card-body">
+          <div class="form-group">
+            <div class="form-label">Karteninhaber</div>
+            <input class="form-input" id="card-holder" type="text" placeholder="Name auf der Karte"/>
+          </div>
+          <div class="form-group">
+            <div class="form-label">Kartennummer</div>
+            <input class="form-input card-visa" id="card-number" type="text" placeholder="1234 5678 9012 3456" maxlength="19" oninput="formatCardNumber(this)"/>
+          </div>
+          <div class="card-input-row">
+            <div class="form-group">
+              <div class="form-label">Gültig bis</div>
+              <input class="form-input" id="card-expiry" type="text" placeholder="MM/JJ" maxlength="5" oninput="formatExpiry(this)"/>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <div class="form-label">CVV</div>
+              <input class="form-input" id="card-cvv" type="text" placeholder="123" maxlength="4"/>
+            </div>
+          </div>
+          <div class="id-note" style="margin-top:14px;">
+            🔒 Ihre Zahlungsdaten werden sicher verschlüsselt übertragen und nicht gespeichert.
+          </div>
+        </div>
+      </div>
+
+      <button class="btn-green" id="pay-confirm-btn" onclick="confirmPayment()" style="display:none;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+        <span id="pay-btn-text">Zahlung bestätigen</span>
+      </button>
+
+    </div><!-- /view-payment -->
+
+    <!-- ══════════════════════════════
+         VIEW E: SHIPPING CONFIRMED
+    ══════════════════════════════ -->
+    <div class="view" id="view-shipping">
+
+      <div class="card">
+        <div class="card-body">
+          <div class="success-banner">
+            <div class="success-circle">
+              <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            </div>
+            <h3>Zahlung erfolgreich! 🎉</h3>
+            <p>Ihr Gegenstand wird jetzt versandt.<br>Hier ist Ihre Sendungsnummer:</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="ch-icon">📦</span> Versanddetails</div>
+        <div class="card-body">
+          <div class="tracking-chip" id="tracking-chip">
+            <div class="tc-label">Sendungsnummer</div>
+            <div class="tc-number" id="tracking-number">–</div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="d-grid">
+            <div class="d-cell">
+              <div class="d-label">📦 Versanddienstleister</div>
+              <div class="d-val" id="ship-carrier">–</div>
+            </div>
+            <div class="d-cell">
+              <div class="d-label">📍 Lieferart</div>
+              <div class="d-val" id="ship-delivery-type">–</div>
+            </div>
+            <div class="d-cell full">
+              <div class="d-label">🏠 Lieferadresse</div>
+              <div class="d-val" id="ship-address">–</div>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="id-note">
+            📬 Nutzen Sie die Sendungsnummer auf der Website Ihres Versanddienstleisters, um den Status Ihrer Sendung zu verfolgen.
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="ch-icon">👤</span> Kunde</div>
+        <div class="card-body">
+          <div class="d-grid">
+            <div class="d-cell full">
+              <div class="d-label">Name</div>
+              <div class="d-val" id="ship-customer-name">–</div>
+            </div>
+            <div class="d-cell full">
+              <div class="d-label">E-Mail</div>
+              <div class="d-val" id="ship-customer-email">–</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /view-shipping -->
+
+    <p class="footer">BVG Fundbüro · Rudolfstr. 1–8, 10245 Berlin · Demo-Daten</p>
+
+  </div><!-- /wrap -->
+
+  <script>
+    /* ═══════════════════════════════════════════════
+       CONFIG
+    ═══════════════════════════════════════════════ */
+    const API_BASE   = 'https://6797e9d9c2c861de0c6e6bdf.mockapi.io/search';
+    const ITEM_ID    = 1;
+    const IMGBB_KEY  = 'e4a50911dcecbb67d727bde5a0147d60';
+    const IMGBB_URL  = 'https://api.imgbb.com/1/upload';
+    const POLL_MS    = 5000;
+
+    // Shipping prices
+    const SHIPPING_PRICES = {
+      home: 8.00,
+      shop: 6.00
+    };
+
+    // Dummy user data for payment
+    const DUMMY_USER = {
+      fname: "Max",
+      lname: "Mustermann",
+      email: "max.mustermann@example.com"
+    };
+
+    // Dummy card data
+    const DUMMY_CARD = {
+      holder: "Max Mustermann",
+      number: "4111 1111 1111 1111",
+      expiry: "12/28",
+      cvv: "123"
+    };
+
+    /* ═══════════════════════════════════════════════
+       ITEM ICONS MAP
+    ═══════════════════════════════════════════════ */
+    const ICONS = {
+      mobile:'📱',phone:'📱',smartphone:'📱',
+      laptop:'💻',tablet:'💻',
+      headphones:'🎧',kopfhörer:'🎧',
+      camera:'📷',kamera:'📷',
+      wallet:'👛',geldbeutel:'👛',portemonnaie:'👛',
+      bag:'👜',tasche:'👜',handtasche:'👜',
+      backpack:'🎒',rucksack:'🎒',
+      suitcase:'🧳',koffer:'🧳',
+      shirt:'👔',hemd:'👔',oberteil:'👔',
+      tshirt:'👕','t-shirt':'👕',
+      jacket:'🧥',jacke:'🧥',coat:'🧥',mantel:'🧥',
+      hoodie:'👕',pullover:'👕',sweater:'👕',
+      dress:'👗',kleid:'👗',skirt:'👗',rock:'👗',
+      pants:'👖',hose:'👖',jeans:'👖',
+      shorts:'🩲',
+      shoes:'👟',schuhe:'👟',sneaker:'👟',
+      boots:'👢',stiefel:'👢',
+      heels:'👠',pumps:'👠',
+      sandals:'👡',sandalen:'👡',
+      socks:'🧦',socken:'🧦',
+      hat:'🧢',mütze:'🧢',kappe:'🧢',cap:'🧢',
+      scarf:'🧣',schal:'🧣',
+      gloves:'🧤',handschuhe:'🧤',
+      glasses:'👓',brille:'👓',sunglasses:'🕶️',
+      umbrella:'☂️',regenschirm:'☂️',
+      watch:'⌚',uhr:'⌚',
+      keys:'🔑',schlüssel:'🔑',
+      card:'💳',karte:'💳',
+      ticket:'🎫',fahrkarte:'🎫',
+      book:'📚',buch:'📚',notebook:'📓',
+    };
+    function getIcon(name) {
+      if (!name) return '📦';
+      const l = name.toLowerCase();
+      for (const [k,v] of Object.entries(ICONS)) if (l.includes(k)) return v;
+      return '📦';
+    }
+
+    /* ═══════════════════════════════════════════════
+       STATE
+    ═══════════════════════════════════════════════ */
+    let item         = null;
+    let confirmed    = false;
+    let selectedIdFile = null;
+    let deliveryType = '';
+    let pollTimer    = null;
+    let paymentData  = {
+      carrier: '',
+      deliveryMethod: '',
+      address: '',
+      price: 0,
+      trackingNum: ''
+    };
+
+    /* ═══════════════════════════════════════════════
+       INIT
+    ═══════════════════════════════════════════════ */
+    async function loadItem() {
+      showSkel(true);
+      try {
+        const res = await fetch(`${API_BASE}/${ITEM_ID}`);
+        if (!res.ok) throw new Error(res.status);
+        item = await res.json();
+        renderItem();
+        showView('view-identify');
+      } catch(e) {
+        console.error(e);
+        showView('view-identify');
+      }
+      showSkel(false);
+    }
+
+    /* ═══════════════════════════════════════════════
+       RESET DEMO
+    ═══════════════════════════════════════════════ */
+    async function resetDemo() {
+      try {
+        await fetch(`${API_BASE}/${ITEM_ID}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            ...item, 
+            update: false,
+            update2: false 
+          }),
+        });
+        
+        confirmed = false;
+        selectedIdFile = null;
+        deliveryType = '';
+        
+        document.getElementById('status-badge-a').textContent = 'Wird gesucht';
+        document.getElementById('status-badge-a').className = 'status-pill active';
+        document.getElementById('confirm-block').classList.remove('checked');
+        document.getElementById('custom-check').querySelector('svg').style.display = 'none';
+        document.getElementById('confirm-btn').disabled = true;
+        document.getElementById('id-drop-zone').style.display = 'block';
+        document.getElementById('id-preview-wrap').style.display = 'none';
+        document.getElementById('id-verified-block').style.display = 'none';
+        document.getElementById('card-delivery-form').style.display = 'none';
+        document.getElementById('price-display').style.display = 'none';
+        document.getElementById('card-customer-payment').style.display = 'none';
+        document.getElementById('card-credit-payment').style.display = 'none';
+        document.getElementById('pay-confirm-btn').style.display = 'none';
+        
+        const fpBtn = document.getElementById('fp-btn');
+        fpBtn.style.background = '';
+        fpBtn.style.boxShadow = '';
+        document.getElementById('fp-icon').innerHTML = `
+          <path d="M12 11c0 3.517-1.009 6.799-2.753 9.571"/>
+          <path d="M4.807 8.96A8 8 0 0 1 19.8 10.4"/>
+          <path d="M8 11a4 4 0 0 1 7.9-.8"/>
+          <path d="M15.797 14a13.026 13.026 0 0 1-2.626 3.844"/>
+          <path d="M3 14.5A16.77 16.77 0 0 0 4.2 20"/>
+          <path d="M19.8 13A13.75 13.75 0 0 1 19 17"/>
+          <path d="M6.5 19.5A15.998 15.998 0 0 0 8 21"/>
+        `;
+        document.getElementById('fp-status').textContent = '';
+        
+        document.getElementById('del-street').value = '';
+        document.getElementById('del-plz').value = '';
+        document.getElementById('del-city').value = '';
+        document.getElementById('del-carrier').value = '';
+        document.getElementById('opt-home').classList.remove('selected');
+        document.getElementById('opt-shop').classList.remove('selected');
+        document.querySelectorAll('input[name="delivery"]').forEach(r => r.checked = false);
+        
+        document.getElementById('pay-fname').value = '';
+        document.getElementById('pay-lname').value = '';
+        document.getElementById('pay-email').value = '';
+        document.getElementById('card-holder').value = '';
+        document.getElementById('card-number').value = '';
+        document.getElementById('card-expiry').value = '';
+        document.getElementById('card-cvv').value = '';
+        
+        showView('view-identify');
+        alert('Demo wurde zurückgesetzt!');
+      } catch(e) {
+        console.error(e);
+        alert('Fehler beim Zurücksetzen.');
+      }
+    }
+
+    /* ═══════════════════════════════════════════════
+       RENDER
+    ═══════════════════════════════════════════════ */
+    function renderItem() {
+      document.getElementById('user-name').textContent  = 'Max Mustermann';
+      document.getElementById('user-phone').textContent = item.phone || '–';
+      document.getElementById('user-initials').textContent = 'MM';
+
+      const photoUrl = item.url || '';
+      const isRealUrl = photoUrl.startsWith('http');
+      if (isRealUrl) {
+        document.getElementById('item-photo').src = photoUrl;
+        document.getElementById('item-photo').style.display = 'block';
+        document.getElementById('photo-placeholder').style.display = 'none';
+      }
+
+      document.getElementById('item-icon-a').textContent  = getIcon(item.Item);
+      document.getElementById('item-name-a').textContent  = item.Item    || 'Unbekannt';
+      document.getElementById('item-special-a').textContent = item.special || '–';
+
+      document.getElementById('d-date').textContent = item.lost_date || '–';
+      document.getElementById('d-time').textContent = item.lost_time || '–';
+      document.getElementById('d-line').textContent = item.line      || '–';
+      document.getElementById('d-type').textContent = item.Item      || '–';
+      document.getElementById('d-desc').textContent = item.special   || '–';
+    }
+
+    function photoError() {
+      document.getElementById('item-photo').style.display = 'none';
+      document.getElementById('photo-placeholder').style.display = 'flex';
+    }
+
+    /* ═══════════════════════════════════════════════
+       VIEW CONTROLLER
+    ═══════════════════════════════════════════════ */
+    function showView(id) {
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      const el = document.getElementById(id);
+      if (el) el.classList.add('active');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    function showSkel(on) {
+      document.getElementById('skel-view').style.display = on ? 'flex' : 'none';
+    }
+
+    /* ═══════════════════════════════════════════════
+       CONFIRM CHECKBOX
+    ═══════════════════════════════════════════════ */
+    function toggleConfirm() {
+      confirmed = !confirmed;
+      const block = document.getElementById('confirm-block');
+      const check = document.getElementById('custom-check');
+      block.classList.toggle('checked', confirmed);
+      check.querySelector('svg').style.display = confirmed ? 'block' : 'none';
+      document.getElementById('confirm-btn').disabled = !confirmed;
+    }
+
+    /* ═══════════════════════════════════════════════
+       CONFIRM OWNERSHIP
+    ═══════════════════════════════════════════════ */
+    async function confirmOwnership() {
+      const btn = document.getElementById('confirm-btn');
+      btn.disabled = true;
+      btn.innerHTML = `<svg class="spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Wird gespeichert…`;
+
+      try {
+        await fetch(`${API_BASE}/${ITEM_ID}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...item, update: true }),
+        });
+        item.update = true;
+      } catch(e) { console.warn('PUT update failed', e); }
+
+      document.getElementById('status-badge-a').textContent = 'Bestätigt';
+      document.getElementById('status-badge-a').className   = 'status-pill found';
+
+      showView('view-pickup');
+      startPolling();
+
+      try {
+        SDK.submit({ action: 'ownership_confirmed', ref: 'BVG-3847', itemId: ITEM_ID });
+      } catch(e) {}
+    }
+
+    /* ═══════════════════════════════════════════════
+       POLLING
+    ═══════════════════════════════════════════════ */
+    function startPolling() {
+      stopPolling();
+      pollTimer = setInterval(async () => {
+        try {
+          const res = await fetch(`${API_BASE}/${ITEM_ID}`);
+          if (!res.ok) return;
+          const fresh = await res.json();
+          if (fresh.update2 === true || fresh.update2 === 'true') {
+            item = fresh;
+            stopPolling();
+            document.getElementById('poll-row').style.display = 'none';
+            showView('view-delivery');
+          }
+        } catch(e) {}
+      }, POLL_MS);
+    }
+    function stopPolling() {
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    }
+
+    /* ═══════════════════════════════════════════════
+       ID PHOTO UPLOAD
+    ═══════════════════════════════════════════════ */
+    function onIdFileSelected(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      if (file.size > 32 * 1024 * 1024) { alert('Datei zu groß (max. 32 MB).'); return; }
+      selectedIdFile = file;
+      const url = URL.createObjectURL(file);
+      document.getElementById('id-preview-img').src          = url;
+      document.getElementById('id-drop-zone').style.display   = 'none';
+      document.getElementById('id-preview-wrap').style.display = 'flex';
+      document.getElementById('id-upload-btn').disabled       = false;
+    }
+    function removeIdFile() {
+      selectedIdFile = null;
+      document.getElementById('id-file-input').value           = '';
+      document.getElementById('id-preview-wrap').style.display  = 'none';
+      document.getElementById('id-drop-zone').style.display    = 'block';
+      document.getElementById('id-upload-btn').disabled        = true;
+    }
+
+    const idDz = document.getElementById('id-drop-zone');
+    idDz.addEventListener('dragover',  e => { e.preventDefault(); idDz.classList.add('drag-over'); });
+    idDz.addEventListener('dragleave', () => idDz.classList.remove('drag-over'));
+    idDz.addEventListener('drop', e => {
+      e.preventDefault(); idDz.classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      if (file && file.type.startsWith('image/')) {
+        const dt = new DataTransfer(); dt.items.add(file);
+        document.getElementById('id-file-input').files = dt.files;
+        onIdFileSelected({ target: { files: [file] } });
+      }
+    });
+
+    async function uploadIdPhoto() {
+      if (!selectedIdFile) return;
+      const btn = document.getElementById('id-upload-btn');
+      btn.disabled = true;
+      btn.innerHTML = `<svg class="spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Wird verifiziert…`;
+
+      const pw = document.getElementById('id-progress-wrap');
+      pw.classList.add('vis');
+      const ob = document.getElementById('id-progress-bar');
+      const nb = ob.cloneNode(true); ob.parentNode.replaceChild(nb, ob);
+
+      try {
+        const b64 = await fileToBase64(selectedIdFile);
+        const fd  = new FormData();
+        fd.append('key', IMGBB_KEY);
+        fd.append('image', b64.split(',')[1]);
+        fd.append('name', `BVG-3847-ID_${Date.now()}`);
+
+        const r = await fetch(IMGBB_URL, { method: 'POST', body: fd });
+        if (!r.ok) throw new Error(r.status);
+        const rd = await r.json();
+        if (!rd.success) throw new Error('imgbb error');
+
+        pw.classList.remove('vis');
+        document.getElementById('id-drop-zone').style.display    = 'none';
+        document.getElementById('id-preview-wrap').style.display  = 'none';
+        document.getElementById('id-upload-btn').style.display    = 'none';
+        document.getElementById('id-verified-block').style.display = 'block';
+
+        document.getElementById('card-delivery-form').style.display = 'block';
+        document.getElementById('card-delivery-form').scrollIntoView({ behavior: 'smooth' });
+
+      } catch(e) {
+        console.error(e);
+        pw.classList.remove('vis');
+        btn.style.background = '#C0392B'; btn.style.color = '#fff';
+        btn.innerHTML = `⚠ Fehler – Erneut versuchen`;
+        btn.disabled = false;
+        setTimeout(() => {
+          btn.style.background = ''; btn.style.color = '';
+          btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg> Ausweis hochladen & verifizieren`;
+          btn.disabled = false;
+        }, 2500);
+      }
+    }
+
+    /* ═══════════════════════════════════════════════
+       DELIVERY TYPE SELECT + PRICE UPDATE
+    ═══════════════════════════════════════════════ */
+    function selectDelivery(type) {
+      deliveryType = type;
+      document.getElementById('opt-home').classList.toggle('selected', type === 'home');
+      document.getElementById('opt-shop').classList.toggle('selected', type === 'shop');
+      document.querySelectorAll(`input[name="delivery"]`).forEach(r => {
+        if (r.value === type) r.checked = true;
+      });
+
+      const price = SHIPPING_PRICES[type];
+      const priceDisplay = document.getElementById('price-display');
+      priceDisplay.style.display = 'block';
+      document.getElementById('shipping-cost').textContent = price.toFixed(2).replace('.', ',') + ' €';
+      document.getElementById('total-amount').textContent = price.toFixed(2).replace('.', ',') + ' €';
+      document.getElementById('send-btn-text').textContent = `Zur Zahlung (${price.toFixed(2).replace('.', ',')} €)`;
+    }
+
+    /* ═══════════════════════════════════════════════
+       SUBMIT DELIVERY → GO TO PAYMENT
+    ═══════════════════════════════════════════════ */
+    function submitDelivery() {
+      const street  = document.getElementById('del-street').value.trim();
+      const plz     = document.getElementById('del-plz').value.trim();
+      const city    = document.getElementById('del-city').value.trim();
+      const carrier = document.getElementById('del-carrier').value;
+
+      if (!street || !plz || !city) { alert('Bitte füllen Sie alle Adressfelder aus.'); return; }
+      if (!carrier) { alert('Bitte wählen Sie einen Versanddienstleister.'); return; }
+      if (!deliveryType) { alert('Bitte wählen Sie eine Lieferart.'); return; }
+
+      paymentData = {
+        carrier: carrier,
+        deliveryMethod: deliveryType === 'home' ? 'Zustellung nach Hause' : 'Abholung im Paketshop',
+        address: `${street}, ${plz} ${city}`,
+        price: SHIPPING_PRICES[deliveryType],
+        trackingNum: ''
+      };
+
+      document.getElementById('payment-item-icon').textContent = getIcon(item?.Item);
+      document.getElementById('payment-item-name').textContent = item?.Item || 'Gegenstand';
+      document.getElementById('payment-delivery-type').textContent = paymentData.deliveryMethod + ' (' + paymentData.address + ')';
+      document.getElementById('payment-carrier').textContent = carrier;
+      document.getElementById('payment-delivery-method').textContent = paymentData.deliveryMethod;
+      document.getElementById('payment-total').textContent = paymentData.price.toFixed(2).replace('.', ',') + ' €';
+      document.getElementById('pay-btn-text').textContent = `Zahlung bestätigen (${paymentData.price.toFixed(2).replace('.', ',')} €)`;
+
+      showView('view-payment');
+    }
+
+    /* ═══════════════════════════════════════════════
+       CARD NUMBER FORMATTING
+    ═══════════════════════════════════════════════ */
+    function formatCardNumber(input) {
+      let value = input.value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+      let formatted = '';
+      for (let i = 0; i < value.length; i++) {
+        if (i > 0 && i % 4 === 0) formatted += ' ';
+        formatted += value[i];
+      }
+      input.value = formatted;
+    }
+
+    function formatExpiry(input) {
+      let value = input.value.replace(/\D/g, '');
+      if (value.length >= 2) {
+        value = value.substring(0, 2) + '/' + value.substring(2, 4);
+      }
+      input.value = value;
+    }
+
+    /* ═══════════════════════════════════════════════
+       FINGERPRINT PAYMENT FLOW
+    ═══════════════════════════════════════════════ */
+    let fpScanning = false;
+
+    function startFingerprint() {
+      if (fpScanning) return;
+      fpScanning = true;
+
+      const btn = document.getElementById('fp-btn');
+      const wrap = document.getElementById('fp-btn-wrap');
+      const status = document.getElementById('fp-status');
+      const progress = document.getElementById('fp-progress');
+
+      btn.classList.add('ripple');
+      setTimeout(() => btn.classList.remove('ripple'), 450);
+
+      wrap.classList.add('scanning');
+      status.textContent = 'Fingerabdruck wird erkannt...';
+      status.className = 'status-msg scanning';
+      progress.classList.add('visible');
+
+      setTimeout(() => {
+        wrap.classList.remove('scanning');
+        status.textContent = '✓ Identität bestätigt';
+        status.className = 'status-msg success';
+        btn.style.background = '#1A8A4A';
+        btn.style.boxShadow = '0 4px 20px rgba(26,138,74,0.45)';
+
+        document.getElementById('fp-icon').innerHTML = '<polyline points="20 6 9 17 4 12" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>';
+
+        // Show customer and card forms
+        document.getElementById('card-customer-payment').style.display = 'block';
+        document.getElementById('card-credit-payment').style.display = 'block';
+        autofillPaymentInputs();
+        document.getElementById('pay-confirm-btn').style.display = 'flex';
+
+        fpScanning = false;
+      }, 1800);
+    }
+
+    function autofillPaymentInputs() {
+      // Customer info
+      document.getElementById('pay-fname').value = DUMMY_USER.fname;
+      document.getElementById('pay-lname').value = DUMMY_USER.lname;
+      document.getElementById('pay-email').value = DUMMY_USER.email;
+
+      // Credit card info
+      document.getElementById('card-holder').value = DUMMY_CARD.holder;
+      document.getElementById('card-number').value = DUMMY_CARD.number;
+      document.getElementById('card-expiry').value = DUMMY_CARD.expiry;
+      document.getElementById('card-cvv').value = DUMMY_CARD.cvv;
+    }
+
+    /* ═══════════════════════════════════════════════
+       CONFIRM PAYMENT
+    ═══════════════════════════════════════════════ */
+    async function confirmPayment() {
+      const fname = document.getElementById('pay-fname').value.trim();
+      const lname = document.getElementById('pay-lname').value.trim();
+      const email = document.getElementById('pay-email').value.trim();
+      const cardHolder = document.getElementById('card-holder').value.trim();
+      const cardNumber = document.getElementById('card-number').value.trim();
+      const cardExpiry = document.getElementById('card-expiry').value.trim();
+      const cardCvv = document.getElementById('card-cvv').value.trim();
+
+      if (!fname || !lname || !email) {
+        alert('Bitte füllen Sie alle Kundeninformationen aus.');
+        return;
+      }
+
+      if (!cardHolder || !cardNumber || !cardExpiry || !cardCvv) {
+        alert('Bitte füllen Sie alle Zahlungsinformationen aus.');
+        return;
+      }
+
+      const btn = document.getElementById('pay-confirm-btn');
+      btn.disabled = true;
+      btn.innerHTML = `<svg class="spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Wird verarbeitet...`;
+
+      // Simulate payment processing
+      await new Promise(r => setTimeout(r, 1500));
+
+      // Generate tracking number
+      paymentData.trackingNum = generateTracking(paymentData.carrier);
+
+      // Update shipping view
+      document.getElementById('tracking-number').textContent = paymentData.trackingNum;
+      document.getElementById('ship-carrier').textContent = paymentData.carrier;
+      document.getElementById('ship-delivery-type').textContent = paymentData.deliveryMethod;
+      document.getElementById('ship-address').textContent = paymentData.address;
+      document.getElementById('ship-customer-name').textContent = `${fname} ${lname}`;
+      document.getElementById('ship-customer-email').textContent = email;
+
+      showView('view-shipping');
+
+      try {
+        SDK.submit({
+          action: 'delivery_requested',
+          ref: 'BVG-3847',
+          trackingNum: paymentData.trackingNum,
+          carrier: paymentData.carrier,
+          deliveryType: deliveryType,
+          price: paymentData.price
+        });
+      } catch(e) {}
+    }
+
+    /* ═══════════════════════════════════════════════
+       HELPERS
+    ═══════════════════════════════════════════════ */
+    function fileToBase64(file) {
+      return new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload  = () => res(r.result);
+        r.onerror = () => rej(new Error('FileReader error'));
+        r.readAsDataURL(file);
+      });
+    }
+
+    function generateTracking(carrier) {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      const prefix = { DHL: 'JD', Hermes: 'H', DPD: 'D', GLS: 'GL', UPS: '1Z' }[carrier] || 'BV';
+      let num = prefix;
+      for (let i = 0; i < 14; i++) num += chars[Math.floor(Math.random() * chars.length)];
+      return num.toUpperCase();
+    }
+
+    /* ═══════════════════════════════════════════════
+       BOOT
+    ═══════════════════════════════════════════════ */
+    loadItem();
+  </script>
+</body>
+</html>
